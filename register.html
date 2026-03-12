@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register - EczemaCare</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 h-screen flex items-center justify-center font-sans">
+    <div class="bg-white p-8 rounded-lg shadow-md w-96">
+        <h2 class="text-2xl font-bold text-center text-blue-600 mb-6">Create an Account</h2>
+        <div id="errorMsg" class="hidden text-red-500 text-sm text-center mb-4"></div>
+        
+        <form id="registerForm" class="space-y-4">
+            <div>
+                <label class="block text-gray-700 text-sm font-bold mb-2">Username</label>
+                <input type="text" id="username" required class="w-full px-3 py-2 border rounded focus:outline-none focus:ring focus:border-blue-300">
+            </div>
+            <div>
+                <label class="block text-gray-700 text-sm font-bold mb-2">Password</label>
+                <input type="password" id="password" required class="w-full px-3 py-2 border rounded focus:outline-none focus:ring focus:border-blue-300">
+            </div>
+            <button type="submit" class="w-full bg-blue-600 text-white font-bold py-2 px-4 rounded hover:bg-blue-700 transition">Register</button>
+        </form>
+        <p class="text-center text-sm text-gray-500 mt-4">
+            Already have an account? <a href="login.html" class="text-blue-500 hover:underline">Log in</a>
+        </p>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+    
+    <script>
+        document.getElementById('registerForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            // 1. 获取用户输入的明文密码
+            const rawPassword = document.getElementById('password').value;
+            
+            // 2. 使用 SHA-256 对密码进行不可逆哈希处理
+            const hashedPassword = CryptoJS.SHA256(rawPassword).toString();
+            
+            const formData = new FormData();
+            formData.append('username', document.getElementById('username').value);
+            // 3. 发送给后端的是哈希后的密码，绝不发送明文
+            formData.append('password', hashedPassword);
+
+            fetch('https://eczema-api.onrender.com/register', {
+                method: 'POST',
+                body: formData
+            })
+            .then(res => {
+                if (!res.ok) throw new Error("Username already taken");
+                return res.json();
+            })
+            .then(data => {
+                alert("Registration successful! Please log in.");
+                window.location.href = 'login.html';
+            })
+            .catch(err => {
+                const errorDiv = document.getElementById('errorMsg');
+                errorDiv.innerText = err.message;
+                errorDiv.classList.remove('hidden');
+            });
+        });
+    </script>
+</body>
+</html>

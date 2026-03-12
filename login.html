@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - EczemaCare</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 h-screen flex items-center justify-center font-sans">
+    <div class="bg-white p-8 rounded-lg shadow-md w-96">
+        <h2 class="text-2xl font-bold text-center text-blue-600 mb-6">Welcome Back</h2>
+        <div id="errorMsg" class="hidden text-red-500 text-sm text-center mb-4"></div>
+        
+        <form id="loginForm" class="space-y-4">
+            <div>
+                <label class="block text-gray-700 text-sm font-bold mb-2">Username</label>
+                <input type="text" id="username" required class="w-full px-3 py-2 border rounded focus:outline-none focus:ring focus:border-blue-300">
+            </div>
+            <div>
+                <label class="block text-gray-700 text-sm font-bold mb-2">Password</label>
+                <input type="password" id="password" required class="w-full px-3 py-2 border rounded focus:outline-none focus:ring focus:border-blue-300">
+            </div>
+            <button type="submit" class="w-full bg-blue-600 text-white font-bold py-2 px-4 rounded hover:bg-blue-700 transition">Log In</button>
+        </form>
+        
+        <p class="text-center text-sm text-gray-500 mt-4">
+            <a href="dashboard.html" class="text-blue-500 hover:underline">Continue as Guest (No saving)</a>
+        </p>
+        <p class="text-center text-sm text-gray-500 mt-2">
+            Don't have an account? <a href="register.html" class="text-blue-500 hover:underline">Register</a>
+        </p>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+
+    <script>
+        document.getElementById('loginForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            // 1. 获取用户输入的明文密码
+            const rawPassword = document.getElementById('password').value;
+            
+            // 2. 使用同样的 SHA-256 算法进行哈希
+            const hashedPassword = CryptoJS.SHA256(rawPassword).toString();
+
+            const params = new URLSearchParams();
+            params.append('username', document.getElementById('username').value);
+            // 3. 发送哈希后的值去后端校验
+            params.append('password', hashedPassword);
+
+            fetch('https://eczema-api.onrender.com/token', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: params
+            })
+            .then(res => {
+                if (!res.ok) throw new Error("Incorrect username or password");
+                return res.json();
+            })
+            .then(data => {
+                // 保存 JWT token 到 localStorage
+                localStorage.setItem('token', data.access_token);
+                window.location.href = 'dashboard.html';
+            })
+            .catch(err => {
+                const errorDiv = document.getElementById('errorMsg');
+                errorDiv.innerText = err.message;
+                errorDiv.classList.remove('hidden');
+            });
+        });
+    </script>
+</body>
+</html>
