@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Eczema Detection</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; text-align: center; }
+        .img-container { max-width: 100%; max-height: 500px; margin-top: 20px; }
+        img { max-width: 100%; }
+        #result { margin-top: 20px; font-size: 24px; font-weight: bold; }
+        .eczema { color: red; }
+        .normal { color: green; }
+        button { padding: 10px 20px; font-size: 16px; margin: 10px; cursor: pointer; }
+    </style>
+</head>
+<body>
+
+    <h1>Skin Condition Predictor (Eczema vs Normal)</h1>
+    
+    <input type="file" id="uploadImage" accept="image/*">
+    <br>
+    
+    <div class="img-container">
+        <img id="image" src="" alt="Picture preview">
+    </div>
+
+    <button id="cropAndPredictBtn" style="display:none;">Crop & Predict</button>
+
+    <div id="result"></div>
+
+    <script>
+        let cropper;
+        const imageElement = document.getElementById('image');
+        const uploadInput = document.getElementById('uploadImage');
+        const predictBtn = document.getElementById('cropAndPredictBtn');
+        const resultDiv = document.getElementById('result');
+
+        // 1. Handle image upload and initialize Cropper
+        uploadInput.addEventListener('change', function(e) {
+            const files = e.target.files;
+            if (files && files.length > 0) {
+                const file = files[0];
+                imageElement.src = URL.createObjectURL(file);
+                
+                // Destroy existing cropper instance if it already exists
+                if (cropper) { cropper.destroy(); }
+                
+                // Initialize Cropper.js (set to 1:1 aspect ratio, suitable for 128x128 trained models)
+                cropper = new Cropper(imageElement, {
+                    aspectRatio: 1, 
+                    viewMode: 1,
+                });
+                predictBtn.style.display = 'inline-block';
+                resultDiv.innerHTML = '';
+            }
+        });
+
+        // 2. Click button to crop and send the image to the backend
+        predictBtn.addEventListener('click', function() {
+            if (!cropper) return;
+            
+            resultDiv.innerHTML = 'Predicting... Please wait.';
+            
+            // Get cropped Canvas data (fixed output size of 128x128 reduces transmission volume)
+            const canvas = cropper.getCroppedCanvas({ width: 128, height: 128 });
+            
+            // Convert Canvas to a Blob object (file format)
+            canvas.toBlob(function(blob) {
+                const formData = new FormData();
+                formData.append('file', blob, 'cropped.jpg');
+
+                // 3. Send POST request to FastAPI backend
+                // IMPORTANT: Change this URL to your Render deployment URL when deploying online!
+                fetch('https://eczema-api.onrender.com/predict/', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    // 4. Display prediction result
+                    if (data.error) {
+                        resultDiv.innerHTML = `<span style="color:orange;">Error: ${data.error}</span>`;
+                        return;
+                    }
+                    
+                    const isEczema = data.label === 'Eczema';
+                    const colorClass = isEczema ? 'eczema' : 'normal';
+                    resultDiv.innerHTML = `<span class="${colorClass}">${data.label}</span> <br> <span style="font-size: 16px; color: #555;">(Confidence: ${data.confidence})</span>`;
+                })
+                .catch(error => {
+                    console.error('Network Error:', error);
+                    resultDiv.innerHTML = '<span style="color:orange;">Error occurred during prediction. Is the backend running?</span>';
+                });
+            }, 'image/jpeg');
+        });
+    </script>
+</body>
+</html>
