@@ -11,16 +11,17 @@
 <body class="bg-gray-100 font-sans">
 
 <div class="max-w-4xl mx-auto p-6 mt-10 bg-white rounded-lg shadow-md">
-    <div class="flex justify-between items-center border-b pb-4 mb-6">
-        <h1 class="text-3xl font-bold text-blue-600">Daily Skin Tracker</h1>
+    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b pb-4 mb-6 gap-4">
+        <h1 class="text-2xl sm:text-3xl font-bold text-blue-600">Daily Skin Tracker</h1>
         
-        <div id="authControlsGuest" class="space-x-4 hidden">
-            <a href="login.html" class="text-blue-600 hover:underline font-medium">Log In</a>
-            <a href="register.html" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Register</a>
+        <div id="authControlsGuest" class="flex items-center space-x-4 hidden w-full sm:w-auto justify-end">
+            <a href="login.html" class="text-blue-600 hover:underline font-medium text-sm sm:text-base">Log In</a>
+            <a href="register.html" class="bg-blue-600 text-white px-4 py-2 rounded shadow hover:bg-blue-700 text-sm sm:text-base transition">Register</a>
         </div>
-        <div id="authControlsLogged" class="space-x-4 hidden">
-            <span class="text-green-600 font-semibold" id="welcomeText">Logged In</span>
-            <button onclick="logout()" class="text-red-500 hover:underline">Logout</button>
+
+        <div id="authControlsLogged" class="flex items-center space-x-4 hidden w-full sm:w-auto justify-end">
+            <span class="text-green-600 font-semibold text-sm sm:text-base" id="welcomeText">Logged In</span>
+            <button onclick="logout()" class="text-red-500 hover:underline text-sm sm:text-base">Logout</button>
         </div>
     </div>
 
