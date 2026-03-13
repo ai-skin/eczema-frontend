@@ -3,99 +3,185 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Eczema Detection</title>
+    <title>EczemaCare Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
-    <style>
-        body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; text-align: center; }
-        .img-container { max-width: 100%; max-height: 500px; margin-top: 20px; }
-        img { max-width: 100%; }
-        #result { margin-top: 20px; font-size: 24px; font-weight: bold; }
-        .eczema { color: red; }
-        .normal { color: green; }
-        button { padding: 10px 20px; font-size: 16px; margin: 10px; cursor: pointer; }
-    </style>
 </head>
-<body>
+<body class="bg-gray-100 font-sans">
 
-    <h1>Skin Condition Predictor (Eczema vs Normal)</h1>
-    
-    <input type="file" id="uploadImage" accept="image/*">
-    <br>
-    
-    <div class="img-container">
-        <img id="image" src="" alt="Picture preview">
+<div class="max-w-4xl mx-auto p-6 mt-10 bg-white rounded-lg shadow-md">
+    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b pb-4 mb-6 gap-4">
+        <h1 class="text-2xl sm:text-3xl font-bold text-blue-600">Daily Skin Tracker</h1>
+        
+        <div id="authControlsGuest" class="flex items-center space-x-4 hidden w-full sm:w-auto justify-end">
+            <a href="login.html" class="text-blue-600 hover:underline font-medium text-sm sm:text-base">Log In</a>
+            <a href="register.html" class="bg-blue-600 text-white px-4 py-2 rounded shadow hover:bg-blue-700 text-sm sm:text-base transition">Register</a>
+        </div>
+
+        <div id="authControlsLogged" class="flex items-center space-x-4 hidden w-full sm:w-auto justify-end">
+            <span class="text-green-600 font-semibold text-sm sm:text-base" id="welcomeText">Logged In</span>
+            <button onclick="logout()" class="text-red-500 hover:underline text-sm sm:text-base">Logout</button>
+        </div>
     </div>
 
-    <button id="cropAndPredictBtn" style="display:none;">Crop & Predict</button>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+        
+        <div>
+            <h2 class="text-xl font-semibold mb-4">1. Upload & Crop</h2>
+            <input type="file" id="uploadImage" accept="image/*" class="mb-4 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
+            
+            <div class="w-full max-h-64 overflow-hidden bg-gray-200 border border-gray-300 rounded mb-4 flex items-center justify-center">
+                <img id="image" src="" alt="" class="max-w-full hidden">
+            </div>
+            
+            <button id="predictBtn" class="hidden w-full bg-blue-600 text-white py-2 rounded shadow hover:bg-blue-700 transition">Analyze Image</button>
+            <div id="result" class="mt-4 text-lg font-bold text-center"></div>
+        </div>
 
-    <div id="result"></div>
+        <div>
+            <h2 class="text-xl font-semibold mb-4">2. Your History</h2>
+            
+            <div id="historyView" class="hidden">
+                <button onclick="loadHistory()" class="mb-4 text-sm text-blue-500 underline">Refresh History</button>
+                <div class="bg-gray-50 p-4 rounded border h-80 overflow-y-auto">
+                    <ul id="historyList" class="space-y-3">
+                        <li class="text-gray-500 text-sm">No records found yet.</li>
+                    </ul>
+                </div>
+            </div>
 
-    <script>
-        let cropper;
-        const imageElement = document.getElementById('image');
-        const uploadInput = document.getElementById('uploadImage');
-        const predictBtn = document.getElementById('cropAndPredictBtn');
-        const resultDiv = document.getElementById('result');
+            <div id="guestPrompt" class="bg-yellow-50 border border-yellow-200 p-6 rounded text-center hidden">
+                <p class="text-yellow-700 mb-4">🔒 Log in to track your skin condition over time!</p>
+                <p class="text-sm text-gray-600 mb-4">You are currently using Guest Mode. You can predict images, but records will not be saved.</p>
+                <a href="login.html" class="inline-block bg-yellow-500 text-white px-4 py-2 rounded hover:bg-yellow-600">Go to Login</a>
+            </div>
+        </div>
+    </div>
+</div>
 
-        // 1. Handle image upload and initialize Cropper
-        uploadInput.addEventListener('change', function(e) {
-            const files = e.target.files;
-            if (files && files.length > 0) {
-                const file = files[0];
-                imageElement.src = URL.createObjectURL(file);
-                
-                // Destroy existing cropper instance if it already exists
-                if (cropper) { cropper.destroy(); }
-                
-                // Initialize Cropper.js (set to 1:1 aspect ratio, suitable for 128x128 trained models)
-                cropper = new Cropper(imageElement, {
-                    aspectRatio: 1, 
-                    viewMode: 1,
-                });
-                predictBtn.style.display = 'inline-block';
-                resultDiv.innerHTML = '';
+<script>
+    const token = localStorage.getItem('token');
+    
+    // UI State Management based on Login Status
+    if (token) {
+        document.getElementById('authControlsLogged').classList.remove('hidden');
+        document.getElementById('historyView').classList.remove('hidden');
+        loadHistory();
+    } else {
+        document.getElementById('authControlsGuest').classList.remove('hidden');
+        document.getElementById('guestPrompt').classList.remove('hidden');
+    }
+
+    let cropper;
+    const imageElement = document.getElementById('image');
+    const uploadInput = document.getElementById('uploadImage');
+    const predictBtn = document.getElementById('predictBtn');
+    const resultDiv = document.getElementById('result');
+
+    // Handle Image Upload
+    uploadInput.addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (file) {
+            imageElement.src = URL.createObjectURL(file);
+            imageElement.classList.remove('hidden');
+            if (cropper) cropper.destroy();
+            cropper = new Cropper(imageElement, { aspectRatio: 1, viewMode: 1 });
+            predictBtn.classList.remove('hidden');
+            resultDiv.innerHTML = '';
+        }
+    });
+
+    // Handle Prediction (Now sends BOTH original and cropped images)
+    predictBtn.addEventListener('click', function() {
+        if (!cropper) return;
+        
+        // Ensure an original file was selected
+        const originalFile = uploadInput.files[0];
+        if (!originalFile) {
+            alert("Please upload an image first.");
+            return;
+        }
+
+        resultDiv.innerHTML = '<span class="text-gray-500">Analyzing & Saving...</span>';
+        
+        cropper.getCroppedCanvas({ width: 128, height: 128 }).toBlob(function(blob) {
+            const formData = new FormData();
+            
+            // Append BOTH files to the form data
+            formData.append('original_file', originalFile); 
+            formData.append('cropped_file', blob, 'cropped.jpg');
+
+            const fetchOptions = {
+                method: 'POST',
+                body: formData
+            };
+            if (token) {
+                fetchOptions.headers = { 'Authorization': `Bearer ${token}` };
             }
-        });
 
-        // 2. Click button to crop and send the image to the backend
-        predictBtn.addEventListener('click', function() {
-            if (!cropper) return;
-            
-            resultDiv.innerHTML = 'Predicting... Please wait.';
-            
-            // Get cropped Canvas data (fixed output size of 128x128 reduces transmission volume)
-            const canvas = cropper.getCroppedCanvas({ width: 128, height: 128 });
-            
-            // Convert Canvas to a Blob object (file format)
-            canvas.toBlob(function(blob) {
-                const formData = new FormData();
-                formData.append('file', blob, 'cropped.jpg');
+            fetch('https://eczema-api.onrender.com/predict', fetchOptions)
+            .then(res => res.json())
+            .then(data => {
+                const color = data.label === 'Eczema' ? 'text-red-500' : 'text-green-500';
+                resultDiv.innerHTML = `<span class="${color}">${data.label}</span> <br><span class="text-sm text-gray-500">Confidence: ${data.confidence}</span>`;
+                if (token) loadHistory(); // Refresh history to show new image
+            })
+            .catch(err => {
+                resultDiv.innerHTML = '<span class="text-red-500">Error predicting.</span>';
+                console.error(err);
+            });
+        }, 'image/jpeg');
+    });
 
-                // 3. Send POST request to FastAPI backend
-                // IMPORTANT: Change this URL to your Render deployment URL when deploying online!
-                fetch('https://eczema-api.onrender.com/predict/', {
-                    method: 'POST',
-                    body: formData
-                })
-                .then(response => response.json())
-                .then(data => {
-                    // 4. Display prediction result
-                    if (data.error) {
-                        resultDiv.innerHTML = `<span style="color:orange;">Error: ${data.error}</span>`;
-                        return;
-                    }
-                    
-                    const isEczema = data.label === 'Eczema';
-                    const colorClass = isEczema ? 'eczema' : 'normal';
-                    resultDiv.innerHTML = `<span class="${colorClass}">${data.label}</span> <br> <span style="font-size: 16px; color: #555;">(Confidence: ${data.confidence})</span>`;
-                })
-                .catch(error => {
-                    console.error('Network Error:', error);
-                    resultDiv.innerHTML = '<span style="color:orange;">Error occurred during prediction. Is the backend running?</span>';
-                });
-            }, 'image/jpeg');
+    // Fetch User History (Now includes thumbnail images)
+    function loadHistory() {
+        fetch('https://eczema-api.onrender.com/history', {
+            method: 'GET',
+            headers: { 'Authorization': `Bearer ${token}` }
+        })
+        .then(res => {
+            if (res.status === 401) { logout(); throw new Error("Session expired"); }
+            return res.json();
+        })
+        .then(data => {
+            const historyList = document.getElementById('historyList');
+            historyList.innerHTML = '';
+            if(data.length === 0) {
+                historyList.innerHTML = '<li class="text-gray-500">No records found.</li>';
+                return;
+            }
+            
+            data.forEach(item => {
+                const color = item.label === 'Eczema' ? 'bg-red-50 text-red-700' : 'bg-green-50 text-green-700';
+                
+                // Construct Image Tag if the path exists
+                const imgTag = item.image_path 
+                    ? `<img src="https://eczema-api.onrender.com${item.image_path}" alt="Cropped" class="w-16 h-16 object-cover rounded-md border border-gray-300 shadow-sm mr-4">` 
+                    : `<div class="w-16 h-16 bg-gray-200 rounded-md border border-gray-300 mr-4 flex items-center justify-center text-xs text-gray-400">No Img</div>`;
+
+                const li = document.createElement('li');
+                li.className = `p-3 rounded-lg flex items-center border border-transparent hover:border-gray-200 transition ${color}`;
+                
+                li.innerHTML = `
+                    ${imgTag}
+                    <div class="flex-1 min-w-0">
+                        <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-1">
+                            <strong class="text-lg sm:text-xl font-bold truncate">${item.label}</strong>
+                            <span class="text-xs text-gray-500 mt-1 sm:mt-0">${item.date}</span>
+                        </div>
+                        <div class="text-sm opacity-80">Confidence: ${item.confidence}</div>
+                    </div>
+                `;
+                historyList.appendChild(li);
+            });
         });
-    </script>
+    }
+
+    function logout() {
+        localStorage.removeItem('token');
+        window.location.reload();
+    }
+</script>
 </body>
 </html>
