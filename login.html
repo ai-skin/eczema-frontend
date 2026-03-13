@@ -24,7 +24,7 @@
         </form>
         
         <p class="text-center text-sm text-gray-500 mt-4">
-            <a href="dashboard.html" class="text-blue-500 hover:underline">Continue as Guest (No saving)</a>
+            <a href="index.html" class="text-blue-500 hover:underline">Continue as Guest (No saving)</a>
         </p>
         <p class="text-center text-sm text-gray-500 mt-2">
             Don't have an account? <a href="register.html" class="text-blue-500 hover:underline">Register</a>
@@ -60,7 +60,7 @@
             .then(data => {
                 // 保存 JWT token 到 localStorage
                 localStorage.setItem('token', data.access_token);
-                window.location.href = 'dashboard.html';
+                window.location.href = 'index.html';
             })
             .catch(err => {
                 const errorDiv = document.getElementById('errorMsg');
